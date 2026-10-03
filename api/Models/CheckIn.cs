@@ -8,3 +8,12 @@ namespace Api.Models;
 //   - Date (DateOnly)    -> just a day, no time; this is what streaks are calculated from
 //
 // Then: uncomment CheckIns in Habit.cs and the DbSet in AppDbContext.cs.
+
+public class CheckIn
+{
+    public int Id { get; set; }
+    public int HabitId { get; set; }
+    public Habit Habit { get; set; } = null!;
+
+    public DateOnly Date { get; set; }
+}

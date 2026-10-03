@@ -14,6 +14,5 @@ public class Habit
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // TODO(you): after creating CheckIn, add the navigation property:
-    //   public List<CheckIn> CheckIns { get; set; } = [];
+     public List<CheckIn> CheckIns { get; set; } = [];
 }

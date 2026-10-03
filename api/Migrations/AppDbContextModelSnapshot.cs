@@ -22,6 +22,28 @@ namespace Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Api.Models.CheckIn", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<int>("HabitId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HabitId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("CheckIns");
+                });
+
             modelBuilder.Entity("Api.Models.Habit", b =>
                 {
                     b.Property<int>("Id")
@@ -44,6 +66,22 @@ namespace Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Habits");
+                });
+
+            modelBuilder.Entity("Api.Models.CheckIn", b =>
+                {
+                    b.HasOne("Api.Models.Habit", "Habit")
+                        .WithMany("CheckIns")
+                        .HasForeignKey("HabitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Habit");
+                });
+
+            modelBuilder.Entity("Api.Models.Habit", b =>
+                {
+                    b.Navigation("CheckIns");
                 });
 #pragma warning restore 612, 618
         }
