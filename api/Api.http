@@ -1,6 +1,36 @@
-@Api_HostAddress = http://localhost:5172
+@host = http://localhost:5172
 
-GET {{Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### List all habits
+GET {{host}}/api/habits
 
-###
+### Create a habit
+POST {{host}}/api/habits
+Content-Type: application/json
+
+{
+  "name": "Drink water",
+  "description": "8 glasses a day"
+}
+
+### Get one habit
+GET {{host}}/api/habits/1
+
+### Update a habit
+PUT {{host}}/api/habits/1
+Content-Type: application/json
+
+{
+  "name": "Read 30 pages",
+  "description": "Before bed"
+}
+
+### Delete a habit (204 first time, 404 after)
+DELETE {{host}}/api/habits/1
+
+### Validation error (expect 400)
+POST {{host}}/api/habits
+Content-Type: application/json
+
+{
+  "name": "   "
+}
