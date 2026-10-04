@@ -1,8 +1,12 @@
+import { connection } from "next/server";
 import { getHabits, type Habit } from "@/lib/api";
 import { HabitCard } from "@/components/HabitCard";
 import { NewHabitForm } from "@/components/NewHabitForm";
 
 export default async function Home() {
+  // Habits change all the time: render on every request instead of prerendering at build time.
+  await connection();
+
   let habits: Habit[] = [];
   let error: string | null = null;
 
