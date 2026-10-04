@@ -14,5 +14,5 @@ public class Habit
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-     public List<CheckIn> CheckIns { get; set; } = [];
+    public List<CheckIn> CheckIns { get; set; } = [];
 }

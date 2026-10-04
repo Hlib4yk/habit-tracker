@@ -8,7 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Habit> Habits => Set<Habit>();
 
-     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
+    public DbSet<CheckIn> CheckIns => Set<CheckIn>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

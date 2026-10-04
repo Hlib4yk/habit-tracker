@@ -1,23 +1,36 @@
+using System.Globalization;
+
 namespace Api.Services;
 
 public record StreakResult(int Current, int Longest);
 
 public static class StreakCalculator
 {
-    // Rules (the tests in api.Tests/StreakCalculatorTests.cs are the full spec):
-    //   - Current streak: consecutive days ending today.
-    //     If today has no check-in yet, the streak is still alive if yesterday has one
-    //     (the day isn't over, so you haven't broken it yet).
-    //   - Longest streak: the longest run of consecutive days ever.
-    //   - Input may be unsorted and contain duplicates.
     public static StreakResult Calculate(IEnumerable<DateOnly> checkInDates, DateOnly today)
     {
-        // TODO(you): make the tests pass.
-        // Useful tools:
-        //   - checkInDates.ToHashSet()          -> dedupe + O(1) Contains, like `new Set(dates)` in JS
-        //   - .Order() / .Distinct() / .ToList() -> LINQ, like array methods in JS
-        //   - date.AddDays(-1)                   -> previous day (DateOnly is immutable, returns a new value)
-        //   - Math.Max(a, b)
-        throw new NotImplementedException();
+        var set = checkInDates.ToHashSet();
+        var day = set.Contains(today) ? today : today.AddDays(-1);
+        var current = 0;
+
+        while (set.Contains(day))
+        {
+            current++;
+            day = day.AddDays(-1);
+        }
+
+        var sorted = set.Order();
+        var longest = 0;
+        var run = 0;
+        DateOnly? prev = null;
+
+        foreach (var d in sorted)
+        {
+            if (prev != null && d == prev.Value.AddDays(1))
+                run++;
+            else run = 1;
+            longest = Math.Max(longest, run);
+            prev = d;
+        }
+        return new StreakResult(current, longest);
     }
 }
