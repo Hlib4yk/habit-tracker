@@ -34,3 +34,9 @@ Content-Type: application/json
 {
   "name": "   "
 }
+
+### Check in for a day (idempotent)
+PUT {{host}}/api/habits/1/checkins/2026-10-04
+
+### Undo a check-in
+DELETE {{host}}/api/habits/1/checkins/2026-10-04

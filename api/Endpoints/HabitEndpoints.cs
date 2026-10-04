@@ -1,12 +1,20 @@
 using Api.Data;
 using Api.Models;
+using Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Endpoints;
 
 // Request/response shapes. `record` = immutable data class, great for DTOs.
 public record CreateHabitRequest(string Name, string? Description);
-public record HabitResponse(int Id, string Name, string? Description, DateTime CreatedAt);
+public record HabitResponse(
+    int Id,
+    string Name,
+    string? Description,
+    DateTime CreatedAt,
+    int CurrentStreak,
+    int LongestStreak,
+    List<DateOnly> CheckIns);
 public record UpdateHabitRequest(string Name, string? Description);
 
 public static class HabitEndpoints
@@ -21,12 +29,15 @@ public static class HabitEndpoints
         // services (AppDbContext) come from DI, the JSON body is deserialized into the request record.
         group.MapGet("/", async (AppDbContext db) =>
         {
+            // Include() = load related CheckIns in the same query (like Prisma's `include`).
+            // Without it, habit.CheckIns would be an empty list.
             var habits = await db.Habits
+                .Include(h => h.CheckIns)
                 .OrderBy(h => h.CreatedAt)
-                .Select(h => new HabitResponse(h.Id, h.Name, h.Description, h.CreatedAt))
                 .ToListAsync();
 
-            return Results.Ok(habits);
+            // Streaks are computed in C# after loading, so ToResponse runs in memory, not in SQL.
+            return Results.Ok(habits.Select(ToResponse));
         });
 
         group.MapPost("/", async (CreateHabitRequest request, AppDbContext db) =>
@@ -43,7 +54,7 @@ public static class HabitEndpoints
 
         group.MapGet("/{id:int}", async (int id, AppDbContext db) =>
         {
-            var habit = await db.Habits.FindAsync(id);
+            var habit = await FindWithCheckIns(db, id);
 
             if (habit is null)
                 return Results.NotFound();
@@ -56,7 +67,7 @@ public static class HabitEndpoints
         // `id` from the route, `request` from the JSON body, `db` from DI.
         group.MapPut("/{id:int}", async (int id, UpdateHabitRequest request, AppDbContext db) =>
         {
-            var habit = await db.Habits.FindAsync(id);
+            var habit = await FindWithCheckIns(db, id);
 
             if (habit is null)
                 return Results.NotFound();
@@ -85,8 +96,63 @@ public static class HabitEndpoints
 
             return Results.NoContent();
         });
+
+        // Mark a habit as done on a given day, e.g. PUT /api/habits/1/checkins/2026-10-04.
+        // PUT (not POST) because it's idempotent: calling it twice leaves the same state.
+        // Both check-in endpoints return the updated habit, so the UI can re-render from one response.
+        group.MapPut("/{id:int}/checkins/{date}", async (int id, DateOnly date, AppDbContext db) =>
+        {
+            var habit = await FindWithCheckIns(db, id);
+
+            if (habit is null)
+                return Results.NotFound();
+
+            if (date > Today())
+                return Results.BadRequest("Cannot check in for a future date");
+
+            // Already checked in -> nothing to do. Without this, the unique index
+            // on (HabitId, Date) would make SaveChanges throw.
+            if (!habit.CheckIns.Any(c => c.Date == date))
+            {
+                habit.CheckIns.Add(new CheckIn { Date = date });
+                await db.SaveChangesAsync();
+            }
+
+            return Results.Ok(ToResponse(habit));
+        });
+
+        group.MapDelete("/{id:int}/checkins/{date}", async (int id, DateOnly date, AppDbContext db) =>
+        {
+            var habit = await FindWithCheckIns(db, id);
+
+            if (habit is null)
+                return Results.NotFound();
+
+            // FirstOrDefault = JS `find()`: the first match or null.
+            var checkIn = habit.CheckIns.FirstOrDefault(c => c.Date == date);
+            if (checkIn is not null)
+            {
+                habit.CheckIns.Remove(checkIn);
+                await db.SaveChangesAsync();
+            }
+
+            return Results.Ok(ToResponse(habit));
+        });
     }
 
-    private static HabitResponse ToResponse(Habit h) =>
-        new(h.Id, h.Name, h.Description, h.CreatedAt);
+    // FindAsync can't Include related data, so we query by Id instead.
+    private static Task<Habit?> FindWithCheckIns(AppDbContext db, int id) =>
+        db.Habits.Include(h => h.CheckIns).FirstOrDefaultAsync(h => h.Id == id);
+
+    // Server-local date. Good enough for a single-user pet project;
+    // a real app would use the user's time zone.
+    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.Now);
+
+    private static HabitResponse ToResponse(Habit h)
+    {
+        var dates = h.CheckIns.Select(c => c.Date).Order().ToList();
+        var streak = StreakCalculator.Calculate(dates, Today());
+
+        return new(h.Id, h.Name, h.Description, h.CreatedAt, streak.Current, streak.Longest, dates);
+    }
 }
