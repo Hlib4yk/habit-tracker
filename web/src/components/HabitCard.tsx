@@ -1,13 +1,14 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
-import { deleteHabit, setCheckIn } from "@/app/actions";
+import { useOptimistic, useTransition, useState } from "react";
+import { deleteHabit, setCheckIn, updateHabit } from "@/app/actions";
 import { toDateKey, type Habit } from "@/lib/api";
 import { HabitHeatmap } from "./HabitHeatmap";
 
 export function HabitCard({ habit }: { habit: Habit }) {
   const today = toDateKey(new Date());
   const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
 
   // Flip the button instantly; the real value arrives when the server action refreshes the page.
   const [doneToday, setDoneToday] = useOptimistic(habit.checkIns.includes(today));
@@ -27,10 +28,54 @@ export function HabitCard({ habit }: { habit: Habit }) {
   return (
     <li className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="truncate text-lg font-semibold">{habit.name}</h2>
-          {habit.description && (
-            <p className="text-sm text-zinc-500">{habit.description}</p>
+        <div className="min-w-0 flex-1">
+          {editing ? (
+            <form
+              action={async (formData) => {
+                await updateHabit(habit.id, formData);
+                setEditing(false);
+              }}
+              onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
+              className="flex flex-col gap-2"
+            >
+              <input
+                name="name"
+                required
+                maxLength={100}
+                autoFocus
+                defaultValue={habit.name}
+                placeholder="Name"
+                className="rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+              />
+              <input
+                name="description"
+                defaultValue={habit.description ?? ""}
+                placeholder="Description (optional)"
+                className="rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="rounded-lg px-3 py-1.5 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <h2 className="truncate text-lg font-semibold">{habit.name}</h2>
+              {habit.description && (
+                <p className="text-sm text-zinc-500">{habit.description}</p>
+              )}
+            </>
           )}
           <p className="mt-1 text-sm">
             🔥 <b>{habit.currentStreak}</b> day streak
@@ -48,6 +93,14 @@ export function HabitCard({ habit }: { habit: Habit }) {
             }`}
           >
             {doneToday ? "✓ Done today" : "Mark today"}
+          </button>
+          <button
+            onClick={() => setEditing(true)}
+            disabled={isPending || editing}
+            aria-label={`Edit ${habit.name}`}
+            className="rounded-lg px-2 py-2 text-zinc-400 hover:text-zinc-700 disabled:opacity-30 dark:hover:text-zinc-200"
+          >
+            ✎
           </button>
           <button
             onClick={remove}

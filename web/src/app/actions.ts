@@ -21,6 +21,20 @@ export async function createHabit(formData: FormData) {
   refresh();
 }
 
+export async function updateHabit(id: number, formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+  if (!name) return;
+
+  await call(`/api/habits/${id}`, { 
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, description})
+  });
+
+  refresh();
+}
+
 export async function deleteHabit(id: number) {
   await call(`/api/habits/${id}`, { method: "DELETE" });
   refresh();
